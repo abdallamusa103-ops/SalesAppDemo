@@ -1,0 +1,52 @@
+# ====================================================================
+# Android Studio & JetBrains IDE
+# ====================================================================
+.idea/
+*.iml
+.vscode/
+
+# ====================================================================
+# Gradle & Build Artifacts
+# ====================================================================
+.gradle/
+build/
+**/build/
+.kotlin/
+
+# Android Packaging & Native
+*.apk
+*.aab
+*.dex
+*.class
+captures/
+.externalNativeBuild/
+.cxx/
+
+# ====================================================================
+# Local Configuration, Secrets & Internal Documentation
+# ====================================================================
+local.properties
+secrets.properties
+*.env
+*.env.*
+BLUEPRINT.md
+
+# Keystores & Signing Keys (Never commit credentials)
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+
+# ====================================================================
+# Diagnostics & Profiling Logs
+# ====================================================================
+*.log
+*.hprof
+
+# ====================================================================
+# OS Artifacts
+# ====================================================================
+.DS_Store
+Thumbs.db
+ehthumbs.db

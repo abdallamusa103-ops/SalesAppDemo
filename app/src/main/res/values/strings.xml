@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Sales App</string>
+    <string name="login_title">Odoo Sales ERP</string>
+    <string name="login_subtitle">Sign in to your enterprise instance</string>
+    <string name="server_url_label">Server URL</string>
+    <string name="server_url_hint">https://your-odoo-domain.com</string>
+    <string name="database_label">Database Name</string>
+    <string name="database_hint">odoo</string>
+    <string name="username_label">Username / Email</string>
+    <string name="username_hint">sales_rep@example.com</string>
+    <string name="password_label">Password</string>
+    <string name="login_button">Sign In</string>
+    <string name="logging_in">Authenticating…</string>
+    <string name="error_empty_fields">Please enter all connection details</string>
+</resources>
