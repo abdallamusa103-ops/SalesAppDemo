@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "5be456ffe2888e9d1b398278b9cfa244",
+    "identityHash": "b4c3f930f0021d48a9ea2c6e1f2f1fd0",
     "entities": [
       {
         "tableName": "customers",
@@ -62,7 +62,7 @@
       },
       {
         "tableName": "sales_orders",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `name` TEXT NOT NULL, `customerId` INTEGER NOT NULL, `customerName` TEXT NOT NULL, `dateOrder` TEXT, `amountTotal` REAL NOT NULL, `state` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `name` TEXT NOT NULL, `customerId` INTEGER NOT NULL, `customerName` TEXT NOT NULL, `dateOrder` TEXT, `amountTotal` REAL NOT NULL, `currency` TEXT NOT NULL, `state` TEXT NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -100,6 +100,12 @@
             "notNull": true
           },
           {
+            "fieldPath": "currency",
+            "columnName": "currency",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
             "fieldPath": "state",
             "columnName": "state",
             "affinity": "TEXT",
@@ -123,11 +129,58 @@
             "createSql": "CREATE INDEX IF NOT EXISTS `index_sales_orders_customerId` ON `${TABLE_NAME}` (`customerId`)"
           }
         ]
+      },
+      {
+        "tableName": "sales_order_lines",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `orderId` INTEGER NOT NULL, `productName` TEXT NOT NULL, `quantity` REAL NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "orderId",
+            "columnName": "orderId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "productName",
+            "columnName": "productName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quantity",
+            "columnName": "quantity",
+            "affinity": "REAL",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_sales_order_lines_orderId",
+            "unique": false,
+            "columnNames": [
+              "orderId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sales_order_lines_orderId` ON `${TABLE_NAME}` (`orderId`)"
+          }
+        ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5be456ffe2888e9d1b398278b9cfa244')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b4c3f930f0021d48a9ea2c6e1f2f1fd0')"
     ]
   }
 }

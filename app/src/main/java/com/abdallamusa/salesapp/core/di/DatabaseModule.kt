@@ -3,7 +3,7 @@ package com.abdallamusa.salesapp.core.di
 import android.content.Context
 import androidx.room.Room
 import com.abdallamusa.salesapp.core.database.SalesDatabase
-import com.abdallamusa.salesapp.features.customers.data.CustomerDao
+import com.abdallamusa.salesapp.features.customers.data.local.CustomerDao
 import com.abdallamusa.salesapp.features.sales.data.SalesOrderDao
 import dagger.Module
 import dagger.Provides

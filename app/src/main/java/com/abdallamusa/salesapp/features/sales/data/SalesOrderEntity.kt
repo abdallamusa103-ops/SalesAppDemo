@@ -10,11 +10,12 @@ import androidx.room.PrimaryKey
 )
 data class SalesOrderEntity(
     @PrimaryKey
-    val id: Int, // Permanent Odoo sale.order ID
-    val name: String, // Order reference (e.g. "SO001")
-    val customerId: Int, // ID from Odoo's partner_id[0]
-    val customerName: String, // Name from Odoo's partner_id[1]
+    val id: Int, // Odoo sale.order ID
+    val name: String, // Order Number (e.g. "SO001")
+    val customerId: Int, // partner_id[0]
+    val customerName: String, // partner_id[1]
     val dateOrder: String?,
     val amountTotal: Double,
+    val currency: String = "", // Dynamic currency (e.g. "LE")
     val state: String // "draft", "sent", "sale", "cancel"
 )

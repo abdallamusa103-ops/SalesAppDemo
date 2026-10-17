@@ -1,15 +1,46 @@
 <resources>
     <string name="app_name">Sales App</string>
-    <string name="login_title">Odoo Sales ERP</string>
-    <string name="login_subtitle">Sign in to your enterprise instance</string>
-    <string name="server_url_label">Server URL</string>
-    <string name="server_url_hint">https://your-odoo-domain.com</string>
-    <string name="database_label">Database Name</string>
-    <string name="database_hint">odoo</string>
-    <string name="username_label">Username / Email</string>
-    <string name="username_hint">sales_rep@example.com</string>
-    <string name="password_label">Password</string>
-    <string name="login_button">Sign In</string>
-    <string name="logging_in">Authenticating…</string>
-    <string name="error_empty_fields">Please enter all connection details</string>
+    <!--login auth Feature -->
+  <string name="login_title">Odoo Sales ERP</string>
+  <string name="login_subtitle">Sign in to your enterprise instance</string>
+  <string name="server_url_label">Server URL</string>
+  <string name="server_url_hint">https://your-odoo-domain.com</string>
+  <string name="database_label">Database Name</string>
+  <string name="database_hint">odoo</string>
+  <string name="username_label">Username / Email</string>
+  <string name="username_hint">sales_rep@example.com</string>
+  <string name="password_label">Password</string>
+  <string name="login_button">Sign In</string>
+  <string name="logging_in">Authenticating…</string>
+  <string name="error_empty_fields">Please enter all connection details</string>
+  <!-- Customer Feature Strings -->
+    <string name="customers_title">Customers</string>
+    <string name="search_customers_hint">Search name or phone…</string>
+    <string name="empty_customers">No customers found</string>
+    <string name="status_synced">Synced</string>
+    <string name="status_pending">Pending Sync</string>
+    <string name="edit_phone_title">Update Phone </string>
+    <string name="new_phone_label">New Phone Number</string>
+    <string name="save_button">Save</string>
+    <string name="cancel_button">Cancel</string>
+    <string name="customer_details_title">Customer Details</string>
+    <string name="back_button_desc">Back</string>
+
+    <!-- Sales Feature Strings -->
+    <string name="sales_orders_title">Sales Orders</string>
+    <string name="status_quotation">Quotation</string>
+    <string name="status_confirmed">Confirmed</string>
+    <string name="status_cancelled">Cancelled</string>
+    <string name="empty_sales_orders">No sales orders found</string>
+    <string name="confirm_order_button">Confirm Sale Order</string>
+    <string name="confirming_order">Confirming…</string>
+    <string name="products_title">Products</string>
+    <string name="order_details_title">Order Details</string>
+
+    <!-- Navigation & Session Strings -->
+    <string name="tab_customers">Customers</string>
+    <string name="tab_sales_orders">Sales Orders</string>
+    <string name="logout_dialog_title">Sign Out</string>
+    <string name="logout_dialog_message">Are you sure you want to sign out?</string>
+    <string name="action_logout">Sign Out</string>
 </resources>

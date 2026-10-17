@@ -1,4 +1,4 @@
-package com.abdallamusa.salesapp.features.customers.data
+package com.abdallamusa.salesapp.features.customers.data.local
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
