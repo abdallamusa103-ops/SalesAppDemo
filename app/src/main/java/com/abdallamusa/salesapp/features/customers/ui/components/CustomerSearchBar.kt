@@ -14,8 +14,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import com.abdallamusa.salesapp.R
+import com.abdallamusa.salesapp.core.theme.AppDimens
 import com.abdallamusa.salesapp.core.theme.SalesAppTheme
 
 @Composable
@@ -38,7 +38,7 @@ fun CustomerSearchBar(
                 }
             }
         },
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(AppDimens.CornerRadiusLarge),
         singleLine = true,
         modifier = modifier.fillMaxWidth()
     )
@@ -51,7 +51,7 @@ private fun CustomerSearchBarPreview() {
         CustomerSearchBar(
             query = "Azure",
             onQueryChange = {},
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(AppDimens.SpacingLarge)
         )
     }
 }

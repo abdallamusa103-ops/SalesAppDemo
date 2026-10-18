@@ -2,6 +2,7 @@ package com.abdallamusa.salesapp.features.customers.data.repository
 
 import com.abdallamusa.salesapp.core.network.OdooApiService
 import com.abdallamusa.salesapp.core.network.model.OdooRpcRequest
+import com.abdallamusa.salesapp.core.utils.ErrorConstants
 import com.abdallamusa.salesapp.features.customers.data.local.CustomerDao
 import com.abdallamusa.salesapp.features.customers.data.local.CustomerEntity
 import com.abdallamusa.salesapp.features.customers.domain.model.Customer
@@ -36,7 +37,7 @@ class CustomerRepositoryImpl @Inject constructor(
                 "model" to "res.partner",
                 "method" to "search_read",
                 "args" to listOf(
-                    listOf(listOf("customer_rank", ">", 0)) // Only actual customers
+                    listOf(listOf("customer_rank", ">", 0))
                 ),
                 "kwargs" to mapOf(
                     "fields" to listOf("id", "name", "phone", "email", "street", "city"),
@@ -47,12 +48,14 @@ class CustomerRepositoryImpl @Inject constructor(
             val response = odooApiService.callKw("res.partner", "search_read", OdooRpcRequest(params = params))
 
             if (!response.isSuccessful) {
-                return@withContext Result.failure(Exception("HTTP Error ${response.code()}"))
+                return@withContext Result.failure(
+                    Exception(ErrorConstants.httpError(response.code(), response.message()))
+                )
             }
 
             val rpcResponse = response.body()
             if (rpcResponse?.error != null) {
-                return@withContext Result.failure(Exception(rpcResponse.error.message ?: "Odoo Query Error"))
+                return@withContext Result.failure(Exception(rpcResponse.error.readableMessage))
             }
 
             val jsonArray = rpcResponse?.result?.asJsonArray ?: return@withContext Result.success(Unit)
@@ -63,7 +66,6 @@ class CustomerRepositoryImpl @Inject constructor(
                 val obj = element.asJsonObject
                 val id = obj.get("id")?.asInt ?: return@mapNotNull null
 
-                // Never overwrite local un-synced edits with server data
                 if (id in existingUnsyncedIds) return@mapNotNull null
 
                 CustomerEntity(
@@ -81,17 +83,49 @@ class CustomerRepositoryImpl @Inject constructor(
             customerDao.upsertCustomers(entities)
             Result.success(Unit)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(Exception(e.message ?: ErrorConstants.ERROR_NETWORK_UNAVAILABLE))
         }
     }
 
     override suspend fun updatePhoneOffline(id: Int, newPhone: String): Result<Unit> = withContext(Dispatchers.IO) {
+        customerDao.updatePhoneOffline(id, newPhone)
+
         try {
-            customerDao.updatePhoneOffline(id, newPhone)
-            syncManager.triggerImmediateSync()
+            val writeParams = mapOf(
+                "model" to "res.partner",
+                "method" to "write",
+                "args" to listOf(
+                    listOf(id),
+                    mapOf("phone" to newPhone)
+                ),
+                "kwargs" to emptyMap<String, Any>()
+            )
+
+            val response = odooApiService.callKw("res.partner", "write", OdooRpcRequest(params = writeParams))
+
+            if (!response.isSuccessful) {
+                syncManager.triggerImmediateSync()
+                return@withContext Result.failure(
+                    Exception(ErrorConstants.httpError(response.code(), response.message()))
+                )
+            }
+
+            val rpcResponse = response.body()
+            if (rpcResponse?.error != null) {
+                syncManager.triggerImmediateSync()
+                return@withContext Result.failure(Exception(rpcResponse.error.readableMessage))
+            }
+
+            val isSuccess = rpcResponse?.result?.takeIf { it.isJsonPrimitive }?.asBoolean ?: false
+            if (isSuccess) {
+                customerDao.markAsSynced(id)
+            } else {
+                syncManager.triggerImmediateSync()
+            }
             Result.success(Unit)
         } catch (e: Exception) {
-            Result.failure(e)
+            syncManager.triggerImmediateSync()
+            Result.failure(Exception(e.message ?: ErrorConstants.ERROR_NETWORK_UNAVAILABLE))
         }
     }
 

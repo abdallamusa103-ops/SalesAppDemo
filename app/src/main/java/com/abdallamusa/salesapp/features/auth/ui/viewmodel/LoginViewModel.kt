@@ -2,6 +2,9 @@ package com.abdallamusa.salesapp.features.auth.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.abdallamusa.salesapp.core.ui.ErrorBannerManager
+import com.abdallamusa.salesapp.core.utils.CredentialValidator
+import com.abdallamusa.salesapp.core.utils.ErrorConstants
 import com.abdallamusa.salesapp.features.auth.domain.AuthRepository
 import com.abdallamusa.salesapp.features.auth.ui.LoginUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,46 +17,65 @@ import javax.inject.Inject
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val errorBannerManager: ErrorBannerManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
-    fun onServerUrlChanged(value: String) {
-        _uiState.update { it.copy(serverUrl = value, errorMessage = null) }
-    }
-
-    fun onDbNameChanged(value: String) {
-        _uiState.update { it.copy(dbName = value, errorMessage = null) }
-    }
-
     fun onUsernameChanged(value: String) {
-        _uiState.update { it.copy(username = value, errorMessage = null) }
+        val emailError = if (value.isNotEmpty()) CredentialValidator.validateEmail(value) else null
+        _uiState.update {
+            it.copy(
+                username = value,
+                emailErrorRes = emailError
+            )
+        }
     }
 
     fun onPasswordChanged(value: String) {
-        _uiState.update { it.copy(password = value, errorMessage = null) }
+        val passwordError = if (value.isNotEmpty()) CredentialValidator.validatePassword(value) else null
+        _uiState.update {
+            it.copy(
+                password = value,
+                passwordErrorRes = passwordError
+            )
+        }
+    }
+
+    fun dismissError() {
+        _uiState.update { it.copy(errorMessage = null) }
+        errorBannerManager.dismissError()
     }
 
     fun login() {
         val currentState = _uiState.value
+        val emailError = CredentialValidator.validateEmail(currentState.username)
+        val passwordError = CredentialValidator.validatePassword(currentState.password)
 
-        if (currentState.serverUrl.isBlank() ||
-            currentState.dbName.isBlank() ||
-            currentState.username.isBlank() ||
-            currentState.password.isBlank()
-        ) {
-            _uiState.update { it.copy(errorMessage = "Please enter all connection details") }
+        if (emailError != null || passwordError != null) {
+            _uiState.update {
+                it.copy(
+                    emailErrorRes = emailError,
+                    passwordErrorRes = passwordError
+                )
+            }
             return
         }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    emailErrorRes = null,
+                    passwordErrorRes = null,
+                    errorMessage = null
+                )
+            }
+            errorBannerManager.dismissError()
 
             val result = authRepository.login(
-                serverUrl = currentState.serverUrl,
-                db = currentState.dbName,
                 username = currentState.username,
                 password = currentState.password
             )
@@ -69,12 +91,14 @@ class LoginViewModel @Inject constructor(
                     }
                 },
                 onFailure = { error ->
+                    val message = error.message ?: ErrorConstants.ERROR_AUTH_FAILED
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "Authentication failed"
+                            errorMessage = message
                         )
                     }
+                    errorBannerManager.showError(message)
                 }
             )
         }

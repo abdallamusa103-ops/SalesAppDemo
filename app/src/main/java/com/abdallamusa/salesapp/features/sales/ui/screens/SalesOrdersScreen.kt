@@ -25,10 +25,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.abdallamusa.salesapp.R
+import com.abdallamusa.salesapp.core.theme.AppDimens
 import com.abdallamusa.salesapp.core.theme.SalesAppTheme
+import com.abdallamusa.salesapp.core.ui.components.ErrorBanner
 import com.abdallamusa.salesapp.features.sales.domain.OrderLine
 import com.abdallamusa.salesapp.features.sales.domain.SalesOrder
 import com.abdallamusa.salesapp.features.sales.ui.components.OrderDetailsBottomSheet
@@ -50,6 +51,7 @@ fun SalesOrdersScreen(
         onOrderClick = viewModel::onOrderClick,
         onDismissDetails = viewModel::onDismissDetails,
         onConfirmOrder = viewModel::confirmOrder,
+        onDismissError = viewModel::dismissError,
         onLogoutClick = onLogoutClick,
         modifier = modifier
     )
@@ -64,6 +66,7 @@ fun SalesOrdersContent(
     onDismissDetails: () -> Unit,
     onConfirmOrder: (orderId: Int) -> Unit,
     modifier: Modifier = Modifier,
+    onDismissError: () -> Unit = {},
     onLogoutClick: (() -> Unit)? = null
 ) {
     Scaffold(
@@ -81,7 +84,10 @@ fun SalesOrdersContent(
                     }
                     if (onLogoutClick != null) {
                         IconButton(onClick = onLogoutClick) {
-                            Icon(imageVector = Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout")
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                                contentDescription = stringResource(R.string.action_logout)
+                            )
                         }
                     }
                 }
@@ -89,46 +95,59 @@ fun SalesOrdersContent(
         },
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
-        if (uiState.orders.isEmpty() && !uiState.isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = stringResource(R.string.empty_sales_orders),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.outline
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(
-                    items = uiState.orders,
-                    key = { it.id }
-                ) { order ->
-                    SalesOrderCard(
-                        order = order,
-                        onClick = { onOrderClick(order) }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            if (uiState.orders.isEmpty() && !uiState.isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = stringResource(R.string.empty_sales_orders),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.outline
                     )
                 }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        horizontal = AppDimens.ScreenHorizontalPadding,
+                        vertical = AppDimens.SpacingSmall
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(AppDimens.SpacingCompact)
+                ) {
+                    items(
+                        items = uiState.orders,
+                        key = { it.id }
+                    ) { order ->
+                        SalesOrderCard(
+                            order = order,
+                            onClick = { onOrderClick(order) }
+                        )
+                    }
+                }
             }
-        }
 
-        uiState.selectedOrder?.let { selected ->
-            OrderDetailsBottomSheet(
-                order = selected,
-                onDismiss = onDismissDetails,
-                onConfirmOrder = onConfirmOrder,
-                isConfirming = uiState.isConfirming
+            ErrorBanner(
+                errorMessage = uiState.errorMessage,
+                onDismiss = onDismissError,
+                modifier = Modifier.align(Alignment.BottomCenter)
             )
+
+            uiState.selectedOrder?.let { selected ->
+                OrderDetailsBottomSheet(
+                    order = selected,
+                    onDismiss = onDismissDetails,
+                    onConfirmOrder = onConfirmOrder,
+                    isConfirming = uiState.isConfirming,
+                    errorMessage = uiState.errorMessage,
+                    onDismissError = onDismissError
+                )
+            }
         }
     }
 }

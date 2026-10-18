@@ -16,9 +16,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import com.abdallamusa.salesapp.R
+import com.abdallamusa.salesapp.core.theme.AppDimens
 import com.abdallamusa.salesapp.core.theme.SalesAppTheme
 import com.abdallamusa.salesapp.features.customers.domain.model.Customer
 
@@ -32,13 +34,13 @@ fun CustomerCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(AppDimens.CornerRadiusLarge),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = AppDimens.CardElevationDefault)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(AppDimens.SpacingLarge)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -53,11 +55,11 @@ fun CustomerCard(
                 SyncStatusBadge(isSynced = customer.isSynced)
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(AppDimens.SpacingSmall))
 
             if (!customer.phone.isNullOrBlank()) {
                 Text(
-                    text = "📞 ${customer.phone}",
+                    text = stringResource(R.string.phone_prefix, customer.phone),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -65,7 +67,7 @@ fun CustomerCard(
 
             if (!customer.city.isNullOrBlank()) {
                 Text(
-                    text = "📍 ${customer.city}",
+                    text = stringResource(R.string.city_prefix, customer.city),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline
                 )
@@ -90,7 +92,7 @@ private fun CustomerCardPreview() {
                 lastModified = System.currentTimeMillis()
             ),
             onClick = {},
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(AppDimens.SpacingLarge)
         )
     }
 }

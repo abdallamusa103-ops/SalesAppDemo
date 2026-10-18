@@ -1,6 +1,7 @@
 package com.abdallamusa.salesapp.features.auth.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,10 +35,11 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.abdallamusa.salesapp.R
+import com.abdallamusa.salesapp.core.theme.AppDimens
 import com.abdallamusa.salesapp.core.theme.SalesAppTheme
+import com.abdallamusa.salesapp.core.ui.components.ErrorBanner
 import com.abdallamusa.salesapp.features.auth.ui.LoginUiState
 import com.abdallamusa.salesapp.features.auth.ui.viewmodel.LoginViewModel
 
@@ -57,11 +59,10 @@ fun LoginScreen(
 
     LoginContent(
         uiState = uiState,
-        onServerUrlChange = viewModel::onServerUrlChanged,
-        onDbNameChange = viewModel::onDbNameChanged,
         onUsernameChange = viewModel::onUsernameChanged,
         onPasswordChange = viewModel::onPasswordChanged,
         onLoginClick = viewModel::login,
+        onDismissError = viewModel::dismissError,
         modifier = modifier
     )
 }
@@ -69,157 +70,157 @@ fun LoginScreen(
 @Composable
 fun LoginContent(
     uiState: LoginUiState,
-    onServerUrlChange: (String) -> Unit,
-    onDbNameChange: (String) -> Unit,
     onUsernameChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onLoginClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onDismissError: () -> Unit = {}
 ) {
     Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 24.dp)
-                .verticalScroll(rememberScrollState())
-                .imePadding(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
         ) {
-            Spacer(modifier = Modifier.height(32.dp))
-
-            Text(
-                text = stringResource(R.string.login_title),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = stringResource(R.string.login_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            OutlinedTextField(
-                value = uiState.serverUrl,
-                onValueChange = onServerUrlChange,
-                label = { Text(stringResource(R.string.server_url_label)) },
-                placeholder = { Text(stringResource(R.string.server_url_hint)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Uri,
-                    imeAction = ImeAction.Next
-                )
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = uiState.dbName,
-                onValueChange = onDbNameChange,
-                label = { Text(stringResource(R.string.database_label)) },
-                placeholder = { Text(stringResource(R.string.database_hint)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = uiState.username,
-                onValueChange = onUsernameChange,
-                label = { Text(stringResource(R.string.username_label)) },
-                placeholder = { Text(stringResource(R.string.username_hint)) },
-                leadingIcon = {
-                    Icon(imageVector = Icons.Default.Person, contentDescription = null)
-                },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email,
-                    imeAction = ImeAction.Next
-                )
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = uiState.password,
-                onValueChange = onPasswordChange,
-                label = { Text(stringResource(R.string.password_label)) },
-                leadingIcon = {
-                    Icon(imageVector = Icons.Default.Lock, contentDescription = null)
-                },
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done
-                )
-            )
-
-            if (!uiState.errorMessage.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = uiState.errorMessage,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(
-                onClick = onLoginClick,
-                enabled = !uiState.isLoading,
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp)
+                    .fillMaxSize()
+                    .padding(horizontal = AppDimens.LoginHorizontalPadding)
+                    .verticalScroll(rememberScrollState())
+                    .imePadding(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                if (uiState.isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp
+                Spacer(modifier = Modifier.height(AppDimens.SpacingHuge))
+
+                Text(
+                    text = stringResource(R.string.login_title),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.height(AppDimens.SpacingSmall))
+
+                Text(
+                    text = stringResource(R.string.login_subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(AppDimens.SpacingHuge))
+
+                OutlinedTextField(
+                    value = uiState.username,
+                    onValueChange = onUsernameChange,
+                    label = { Text(stringResource(R.string.username_label)) },
+                    placeholder = { Text(stringResource(R.string.username_hint)) },
+                    leadingIcon = {
+                        Icon(imageVector = Icons.Default.Person, contentDescription = null)
+                    },
+                    isError = uiState.emailErrorRes != null,
+                    supportingText = uiState.emailErrorRes?.let { errorRes ->
+                        { Text(text = stringResource(errorRes)) }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Email,
+                        imeAction = ImeAction.Next
                     )
-                } else {
-                    Text(
-                        text = stringResource(R.string.login_button),
-                        style = MaterialTheme.typography.titleMedium
+                )
+
+                Spacer(modifier = Modifier.height(AppDimens.SpacingLarge))
+
+                OutlinedTextField(
+                    value = uiState.password,
+                    onValueChange = onPasswordChange,
+                    label = { Text(stringResource(R.string.password_label)) },
+                    leadingIcon = {
+                        Icon(imageVector = Icons.Default.Lock, contentDescription = null)
+                    },
+                    isError = uiState.passwordErrorRes != null,
+                    supportingText = uiState.passwordErrorRes?.let { errorRes ->
+                        { Text(text = stringResource(errorRes)) }
+                    },
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Done
                     )
+                )
+
+                Spacer(modifier = Modifier.height(AppDimens.SpacingExtraLarge))
+
+                Button(
+                    onClick = onLoginClick,
+                    enabled = !uiState.isLoading,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(AppDimens.ButtonHeight)
+                ) {
+                    if (uiState.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(AppDimens.ProgressIndicatorSize),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = AppDimens.ProgressStrokeWidth
+                        )
+                    } else {
+                        Text(
+                            text = stringResource(R.string.login_button),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
                 }
+
+                Spacer(modifier = Modifier.height(AppDimens.SpacingHuge))
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            ErrorBanner(
+                errorMessage = uiState.errorMessage,
+                onDismiss = onDismissError,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
         }
     }
 }
 
 @Preview(showBackground = true)
 @Composable
-private fun LoginContentPreview() {
+private fun LoginContentValidationPreview() {
     SalesAppTheme {
         LoginContent(
             uiState = LoginUiState(
-                serverUrl = "https://sales.odoo.com",
-                dbName = "production",
-                username = "field_rep",
+                username = "invalid-email",
+                password = "12",
+                emailErrorRes = R.string.error_email_invalid,
+                passwordErrorRes = R.string.error_password_short,
                 isLoading = false
             ),
-            onServerUrlChange = {},
-            onDbNameChange = {},
             onUsernameChange = {},
             onPasswordChange = {},
             onLoginClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun LoginContentApiErrorPreview() {
+    SalesAppTheme {
+        LoginContent(
+            uiState = LoginUiState(
+                username = "sales_rep@abdo23.odoo.com",
+                password = "password123",
+                isLoading = false,
+                errorMessage = "Access Denied"
+            ),
+            onUsernameChange = {},
+            onPasswordChange = {},
+            onLoginClick = {},
+            onDismissError = {}
         )
     }
 }

@@ -15,10 +15,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import com.abdallamusa.salesapp.R
+import com.abdallamusa.salesapp.core.theme.AppDimens
 import com.abdallamusa.salesapp.core.theme.SalesAppTheme
 
 @Composable
@@ -32,44 +34,50 @@ fun CustomerPhoneEditor(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(AppDimens.CornerRadiusLarge),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(AppDimens.SpacingLarge)) {
             Text(
-                text = "Phone Number (Offline-First)",
+                text = stringResource(R.string.phone_section_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(AppDimens.SpacingMedium))
 
             OutlinedTextField(
                 value = phoneInput,
                 onValueChange = onPhoneChange,
-                label = { Text("Phone Number") },
+                label = { Text(stringResource(R.string.phone_label)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
 
             if (saveSuccess) {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(AppDimens.SpacingSmall))
                 Text(
-                    text = "Saved locally! Will sync with Odoo automatically.",
+                    text = stringResource(R.string.phone_saved_message),
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.bodySmall
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(AppDimens.SpacingLarge))
 
             Button(
                 onClick = onSaveClick,
                 enabled = !isSaving,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (isSaving) "Saving…" else "Update Phone")
+                Text(
+                    text = if (isSaving) {
+                        stringResource(R.string.saving_button)
+                    } else {
+                        stringResource(R.string.edit_phone_title)
+                    }
+                )
             }
         }
     }
@@ -85,7 +93,7 @@ private fun CustomerPhoneEditorPreview() {
             onSaveClick = {},
             isSaving = false,
             saveSuccess = true,
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(AppDimens.SpacingLarge)
         )
     }
 }

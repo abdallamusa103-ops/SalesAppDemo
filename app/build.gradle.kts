@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -5,6 +7,16 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.room)
 }
+
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use { load(it) }
+    }
+}
+
+val odooBaseUrl = localProperties.getProperty("ODOO_BASE_URL") ?: "https://abdo23.odoo.com"
+val odooDb = localProperties.getProperty("ODOO_DB") ?: "abdo23"
 
 android {
     namespace = "com.abdallamusa.salesapp"
@@ -18,6 +30,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "ODOO_BASE_URL", "\"$odooBaseUrl\"")
+        buildConfigField("String", "ODOO_DB", "\"$odooDb\"")
     }
 
     buildTypes {
@@ -36,9 +51,8 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
-
-
 }
 
 room {

@@ -52,7 +52,7 @@ class SalesRepositoryImpl @Inject constructor(
 
             val orderRpc = orderResponse.body()
             if (orderRpc?.error != null) {
-                return@withContext Result.failure(Exception(orderRpc.error.message ?: "Odoo Error"))
+                return@withContext Result.failure(Exception(orderRpc.error.readableMessage))
             }
 
             val ordersJson = orderRpc?.result?.asJsonArray ?: return@withContext Result.success(Unit)
@@ -182,7 +182,7 @@ class SalesRepositoryImpl @Inject constructor(
 
             val rpcResponse = response.body()
             if (rpcResponse?.error != null) {
-                return@withContext Result.failure(Exception(rpcResponse.error.message ?: "Confirm Failed"))
+                return@withContext Result.failure(Exception(rpcResponse.error.readableMessage))
             }
 
             // Room update

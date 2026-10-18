@@ -10,6 +10,11 @@ import retrofit2.http.Path
 
 interface OdooApiService {
 
+    @POST("web/database/list")
+    suspend fun listDatabases(
+        @Body request: OdooRpcRequest<Map<String, Any?>> = OdooRpcRequest(params = emptyMap())
+    ): Response<OdooRpcResponse<JsonElement>>
+
     @POST("web/session/authenticate")
     suspend fun authenticate(
         @Body request: OdooRpcRequest<Map<String, Any?>>

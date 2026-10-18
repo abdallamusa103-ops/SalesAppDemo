@@ -28,9 +28,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import com.abdallamusa.salesapp.R
+import com.abdallamusa.salesapp.core.theme.AppDimens
 import com.abdallamusa.salesapp.core.theme.SalesAppTheme
+import com.abdallamusa.salesapp.core.ui.components.ErrorBanner
 import com.abdallamusa.salesapp.features.sales.domain.OrderLine
 import com.abdallamusa.salesapp.features.sales.domain.SalesOrder
 
@@ -42,6 +43,8 @@ fun OrderDetailsBottomSheet(
     onConfirmOrder: (orderId: Int) -> Unit,
     isConfirming: Boolean,
     modifier: Modifier = Modifier,
+    errorMessage: String? = null,
+    onDismissError: () -> Unit = {},
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 ) {
     ModalBottomSheet(
@@ -53,7 +56,12 @@ fun OrderDetailsBottomSheet(
             order = order,
             onConfirmOrder = onConfirmOrder,
             isConfirming = isConfirming,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+            errorMessage = errorMessage,
+            onDismissError = onDismissError,
+            modifier = Modifier.padding(
+                horizontal = AppDimens.LoginHorizontalPadding,
+                vertical = AppDimens.SpacingSmall
+            )
         )
     }
 }
@@ -63,7 +71,9 @@ fun OrderDetailsContent(
     order: SalesOrder,
     onConfirmOrder: (orderId: Int) -> Unit,
     isConfirming: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    errorMessage: String? = null,
+    onDismissError: () -> Unit = {}
 ) {
     Column(
         modifier = modifier
@@ -91,17 +101,17 @@ fun OrderDetailsContent(
         }
 
         if (!order.dateOrder.isNullOrBlank()) {
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(AppDimens.SpacingTiny))
             Text(
-                text = "📅 ${order.dateOrder}",
+                text = stringResource(R.string.date_prefix, order.dateOrder),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(AppDimens.SpacingLarge))
         HorizontalDivider()
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(AppDimens.SpacingLarge))
 
         Text(
             text = stringResource(R.string.products_title),
@@ -109,23 +119,26 @@ fun OrderDetailsContent(
             fontWeight = FontWeight.Bold
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(AppDimens.SpacingSmall))
 
         if (order.products.isEmpty()) {
             Text(
-                text = "No products loaded",
+                text = stringResource(R.string.empty_products),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.outline
             )
         } else {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(AppDimens.SpacingSmall)) {
                 order.products.forEach { product ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(AppDimens.CornerRadiusMedium))
                             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                            .padding(
+                                horizontal = AppDimens.SpacingMedium,
+                                vertical = AppDimens.SpacingSmall
+                            ),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -141,7 +154,7 @@ fun OrderDetailsContent(
                             product.quantity.toString()
                         }
                         Text(
-                            text = "× $qtyText",
+                            text = stringResource(R.string.qty_multiplier, qtyText),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -151,9 +164,9 @@ fun OrderDetailsContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(AppDimens.SpacingLarge))
         HorizontalDivider()
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(AppDimens.SpacingLarge))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -161,7 +174,7 @@ fun OrderDetailsContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Total Amount",
+                text = stringResource(R.string.total_amount_label),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -174,19 +187,19 @@ fun OrderDetailsContent(
         }
 
         if (order.isConfirmable) {
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(AppDimens.SpacingExtraLarge))
             Button(
                 onClick = { onConfirmOrder(order.id) },
                 enabled = !isConfirming,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp)
+                    .height(AppDimens.ButtonHeight)
             ) {
                 if (isConfirming) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(AppDimens.ProgressIndicatorSize),
                         color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp
+                        strokeWidth = AppDimens.ProgressStrokeWidth
                     )
                 } else {
                     Text(
@@ -197,7 +210,12 @@ fun OrderDetailsContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        ErrorBanner(
+            errorMessage = errorMessage,
+            onDismiss = onDismissError
+        )
+
+        Spacer(modifier = Modifier.height(AppDimens.SpacingHuge))
     }
 }
 
@@ -222,7 +240,7 @@ private fun OrderDetailsContentPreview() {
             ),
             onConfirmOrder = {},
             isConfirming = false,
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(AppDimens.SpacingLarge)
         )
     }
 }

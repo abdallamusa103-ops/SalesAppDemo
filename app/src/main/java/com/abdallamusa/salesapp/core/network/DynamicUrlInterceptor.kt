@@ -1,5 +1,6 @@
 package com.abdallamusa.salesapp.core.network
 
+import com.abdallamusa.salesapp.BuildConfig
 import com.abdallamusa.salesapp.core.datastore.SessionPreference
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.runBlocking
@@ -26,9 +27,9 @@ class DynamicUrlInterceptor @Inject constructor(
 
         val baseUrl = cachedBaseUrl ?: runBlocking {
             sessionPreference.sessionFlow.firstOrNull()?.serverUrl?.trim()?.trimEnd('/')
-        }
+        } ?: BuildConfig.ODOO_BASE_URL.trim().trimEnd('/')
 
-        if (baseUrl.isNullOrBlank()) {
+        if (baseUrl.isBlank()) {
             return chain.proceed(originalRequest)
         }
 

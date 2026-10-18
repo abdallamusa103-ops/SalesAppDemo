@@ -4,10 +4,10 @@ import com.abdallamusa.salesapp.core.datastore.SessionPreference
 import com.abdallamusa.salesapp.core.datastore.UserSession
 import com.abdallamusa.salesapp.core.network.DynamicUrlInterceptor
 import com.abdallamusa.salesapp.core.network.OdooApiService
+import com.abdallamusa.salesapp.core.network.OdooServerConfig
 import com.abdallamusa.salesapp.core.network.OdooXmlRpcClient
 import com.abdallamusa.salesapp.core.network.model.OdooRpcRequest
 import com.abdallamusa.salesapp.features.auth.domain.AuthRepository
-import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -18,6 +18,7 @@ import javax.inject.Singleton
 class AuthRepositoryImpl @Inject constructor(
     private val odooApiService: OdooApiService,
     private val odooXmlRpcClient: OdooXmlRpcClient,
+    private val odooServerConfig: OdooServerConfig,
     private val sessionPreference: SessionPreference,
     private val dynamicUrlInterceptor: DynamicUrlInterceptor
 ) : AuthRepository {
@@ -25,13 +26,12 @@ class AuthRepositoryImpl @Inject constructor(
     override val sessionFlow: Flow<UserSession> = sessionPreference.sessionFlow
 
     override suspend fun login(
-        serverUrl: String,
-        db: String,
         username: String,
         password: String
     ): Result<UserSession> = withContext(Dispatchers.IO) {
-        val cleanServerUrl = serverUrl.trim().trimEnd('/')
+        val cleanServerUrl = odooServerConfig.baseUrl
         dynamicUrlInterceptor.updateBaseUrl(cleanServerUrl)
+        val db = odooServerConfig.resolveDatabaseName()
 
         // 1. Primary Strategy: Try Odoo REST JSON-RPC
         val restResult = tryRestAuthentication(cleanServerUrl, db, username, password)
@@ -46,7 +46,7 @@ class AuthRepositoryImpl @Inject constructor(
             val session = UserSession(
                 userId = uid,
                 sessionId = "xmlrpc_session_$uid",
-                isInternalUser = true, // Default for authenticated XML-RPC users
+                isInternalUser = true,
                 serverUrl = cleanServerUrl,
                 dbName = db
             )
@@ -60,8 +60,11 @@ class AuthRepositoryImpl @Inject constructor(
             return@withContext Result.success(session)
         }
 
-        // 3. Both failed
-        Result.failure(Exception("Authentication failed on both REST and XML-RPC. Please check credentials, database, and server URL."))
+        // 3. Both failed: surface the exact error message from the server response
+        val errorMessage = restResult.exceptionOrNull()?.message
+            ?: xmlRpcResult.exceptionOrNull()?.message
+            ?: "Authentication failed"
+        Result.failure(Exception(errorMessage))
     }
 
     private suspend fun tryRestAuthentication(
@@ -73,28 +76,32 @@ class AuthRepositoryImpl @Inject constructor(
         return try {
             val authParams = mapOf(
                 "db" to db,
-                "login" to username,
+                "login" to username.trim(),
                 "password" to password
             )
             val response = odooApiService.authenticate(OdooRpcRequest(params = authParams))
 
             if (!response.isSuccessful) {
-                return Result.failure(Exception("HTTP Error ${response.code()}"))
+                return Result.failure(Exception("HTTP Error ${response.code()}: ${response.message()}"))
             }
 
             val rpcResponse = response.body()
             if (rpcResponse?.error != null) {
-                return Result.failure(Exception(rpcResponse.error.message ?: "Odoo Auth Error"))
+                return Result.failure(Exception(rpcResponse.error.readableMessage))
             }
 
-            val resultObj = rpcResponse?.result?.asJsonObject
-            val uid = resultObj?.get("uid")?.takeIf { !it.isJsonNull }?.asInt
+            val resultObj = rpcResponse?.result?.takeIf { it.isJsonObject }?.asJsonObject
+            val uidElement = resultObj?.get("uid")
+            val uid = if (uidElement != null && !uidElement.isJsonNull && uidElement.isJsonPrimitive && uidElement.asJsonPrimitive.isNumber) {
+                uidElement.asInt
+            } else {
+                null
+            }
 
             if (uid == null || uid <= 0) {
-                return Result.failure(Exception("Invalid credentials"))
+                return Result.failure(Exception("Access Denied: Invalid username or password"))
             }
 
-            // Extract session_id from Set-Cookie header
             var sessionId: String? = null
             val cookieHeaders = response.headers().values("Set-Cookie")
             for (cookie in cookieHeaders) {
@@ -105,7 +112,6 @@ class AuthRepositoryImpl @Inject constructor(
                 }
             }
 
-            // Check if user has base.group_user (Internal User role)
             val isInternalUser = checkIsInternalUser(uid)
 
             val session = UserSession(
@@ -140,9 +146,9 @@ class AuthRepositoryImpl @Inject constructor(
             )
             val response = odooApiService.callKw("res.users", "has_group", OdooRpcRequest(params = groupCheckParams))
             val result = response.body()?.result
-            result?.asBoolean ?: true
-        } catch (e: Exception) {
-            true // Fallback gracefully to allow sales exploration if role query fails
+            result?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isBoolean }?.asBoolean ?: true
+        } catch (_: Exception) {
+            true
         }
     }
 

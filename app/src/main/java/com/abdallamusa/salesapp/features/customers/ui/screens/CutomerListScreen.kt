@@ -28,10 +28,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.abdallamusa.salesapp.R
+import com.abdallamusa.salesapp.core.theme.AppDimens
 import com.abdallamusa.salesapp.core.theme.SalesAppTheme
+import com.abdallamusa.salesapp.core.ui.components.ErrorBanner
 import com.abdallamusa.salesapp.features.customers.domain.model.Customer
 import com.abdallamusa.salesapp.features.customers.ui.CustomerListUiState
 import com.abdallamusa.salesapp.features.customers.ui.components.CustomerCard
@@ -52,6 +53,7 @@ fun CustomerListScreen(
         onRefresh = viewModel::refresh,
         onSearchQueryChange = viewModel::onSearchQueryChanged,
         onCustomerClick = { customer -> onCustomerClick(customer.id) },
+        onDismissError = viewModel::dismissError,
         onLogoutClick = onLogoutClick,
         modifier = modifier
     )
@@ -65,6 +67,7 @@ fun CustomerListContent(
     onSearchQueryChange: (String) -> Unit,
     onCustomerClick: (Customer) -> Unit,
     modifier: Modifier = Modifier,
+    onDismissError: () -> Unit = {},
     onLogoutClick: (() -> Unit)? = null
 ) {
     Scaffold(
@@ -82,7 +85,10 @@ fun CustomerListContent(
                     }
                     if (onLogoutClick != null) {
                         IconButton(onClick = onLogoutClick) {
-                            Icon(imageVector = Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout")
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                                contentDescription = stringResource(R.string.action_logout)
+                            )
                         }
                     }
                 }
@@ -90,47 +96,58 @@ fun CustomerListContent(
         },
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp)
         ) {
-            CustomerSearchBar(
-                query = uiState.searchQuery,
-                onQueryChange = onSearchQueryChange
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = AppDimens.ScreenHorizontalPadding)
+            ) {
+                CustomerSearchBar(
+                    query = uiState.searchQuery,
+                    onQueryChange = onSearchQueryChange
+                )
 
-            Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(AppDimens.SpacingMedium))
 
-            if (uiState.customers.isEmpty() && !uiState.isRefreshing) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = stringResource(R.string.empty_customers),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(
-                        items = uiState.customers,
-                        key = { it.id }
-                    ) { customer ->
-                        CustomerCard(
-                            customer = customer,
-                            onClick = { onCustomerClick(customer) }
+                if (uiState.customers.isEmpty() && !uiState.isRefreshing) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(R.string.empty_customers),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.outline
                         )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(vertical = AppDimens.SpacingSmall),
+                        verticalArrangement = Arrangement.spacedBy(AppDimens.SpacingSmall)
+                    ) {
+                        items(
+                            items = uiState.customers,
+                            key = { it.id }
+                        ) { customer ->
+                            CustomerCard(
+                                customer = customer,
+                                onClick = { onCustomerClick(customer) }
+                            )
+                        }
                     }
                 }
             }
+
+            ErrorBanner(
+                errorMessage = uiState.errorMessage,
+                onDismiss = onDismissError,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
         }
     }
 }

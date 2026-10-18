@@ -43,11 +43,12 @@ fun AppNavHost(
     NavHost(
         navController = navController,
         startDestination = startDestination,
-        modifier = modifier
+        modifier = modifier.fillMaxSize()
     ) {
         composable(NavRoute.Login.route) {
             LoginScreen(
                 onLoginSuccess = {
+                    viewModel.dismissError()
                     navController.navigate(NavRoute.Main.route) {
                         popUpTo(NavRoute.Login.route) { inclusive = true }
                         launchSingleTop = true
@@ -60,6 +61,7 @@ fun AppNavHost(
             MainScreen(
                 isInternalUser = session?.isInternalUser ?: false,
                 onNavigateToCustomerDetails = { customerId ->
+                    viewModel.dismissError()
                     navController.navigate(NavRoute.CustomerDetails.createRoute(customerId))
                 },
                 onLogout = {
@@ -82,7 +84,10 @@ fun AppNavHost(
             )
         ) {
             CustomerDetailsScreen(
-                onBackClick = { navController.popBackStack() }
+                onBackClick = {
+                    viewModel.dismissError()
+                    navController.popBackStack()
+                }
             )
         }
     }

@@ -7,8 +7,6 @@ interface AuthRepository {
     val sessionFlow: Flow<UserSession>
 
     suspend fun login(
-        serverUrl: String,
-        db: String,
         username: String,
         password: String
     ): Result<UserSession>

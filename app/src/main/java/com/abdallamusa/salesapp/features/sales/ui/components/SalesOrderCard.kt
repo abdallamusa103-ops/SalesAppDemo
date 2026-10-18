@@ -16,9 +16,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import com.abdallamusa.salesapp.R
+import com.abdallamusa.salesapp.core.theme.AppDimens
 import com.abdallamusa.salesapp.core.theme.SalesAppTheme
 import com.abdallamusa.salesapp.features.sales.domain.SalesOrder
 
@@ -32,13 +34,13 @@ fun SalesOrderCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(AppDimens.CornerRadiusLarge),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = AppDimens.CardElevationDefault)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(AppDimens.SpacingLarge)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -52,7 +54,7 @@ fun SalesOrderCard(
                 OrderStatusChip(state = order.state)
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(AppDimens.SpacingExtraSmall))
 
             Text(
                 text = order.customerName,
@@ -61,15 +63,15 @@ fun SalesOrderCard(
             )
 
             if (!order.dateOrder.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(AppDimens.SpacingTiny))
                 Text(
-                    text = "📅 ${order.dateOrder}",
+                    text = stringResource(R.string.date_prefix, order.dateOrder),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(AppDimens.SpacingSmall))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -102,7 +104,7 @@ private fun SalesOrderCardPreview() {
                 state = "draft"
             ),
             onClick = {},
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(AppDimens.SpacingLarge)
         )
     }
 }

@@ -3,6 +3,7 @@ package com.abdallamusa.salesapp.features.customers.ui.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.abdallamusa.salesapp.core.ui.ErrorBannerManager
 import com.abdallamusa.salesapp.features.customers.domain.repository.CustomerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +16,7 @@ import javax.inject.Inject
 @HiltViewModel
 class CustomerDetailsViewModel @Inject constructor(
     private val customerRepository: CustomerRepository,
+    private val errorBannerManager: ErrorBannerManager,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -45,6 +47,11 @@ class CustomerDetailsViewModel @Inject constructor(
         _uiState.update { it.copy(phoneInput = newPhone, saveSuccess = false) }
     }
 
+    fun dismissError() {
+        _uiState.update { it.copy(errorMessage = null) }
+        errorBannerManager.dismissError()
+    }
+
     fun savePhone() {
         val current = _uiState.value
         val customer = current.customer ?: return
@@ -57,7 +64,14 @@ class CustomerDetailsViewModel @Inject constructor(
                         _uiState.update { it.copy(isSaving = false, saveSuccess = true) }
                     },
                     onFailure = { error ->
-                        _uiState.update { it.copy(isSaving = false, errorMessage = error.message) }
+                        _uiState.update {
+                            it.copy(
+                                isSaving = false,
+                                saveSuccess = true,
+                                errorMessage = error.message
+                            )
+                        }
+                        errorBannerManager.showError(error.message)
                     }
                 )
         }

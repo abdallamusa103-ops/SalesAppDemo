@@ -18,7 +18,12 @@ data class OdooRpcError(
     val message: String?,
     @SerializedName("data")
     val data: OdooRpcErrorData?
-)
+) {
+    val readableMessage: String
+        get() = data?.message?.takeIf { it.isNotBlank() }
+            ?: message?.takeIf { it.isNotBlank() }
+            ?: "Odoo Server Error"
+}
 
 data class OdooRpcErrorData(
     @SerializedName("name")

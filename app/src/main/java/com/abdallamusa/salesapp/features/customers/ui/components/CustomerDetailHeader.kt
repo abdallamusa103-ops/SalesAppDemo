@@ -20,7 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import com.abdallamusa.salesapp.core.theme.AppDimens
 import com.abdallamusa.salesapp.core.theme.SalesAppTheme
 
 @Composable
@@ -35,7 +35,7 @@ fun CustomerDetailHeader(
     ) {
         Box(
             modifier = Modifier
-                .size(72.dp)
+                .size(AppDimens.AvatarContainerSize)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center
@@ -44,11 +44,11 @@ fun CustomerDetailHeader(
                 imageVector = Icons.Default.Person,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier.size(AppDimens.AvatarIconSize)
             )
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(AppDimens.SpacingMedium))
 
         Text(
             text = name,
@@ -56,7 +56,7 @@ fun CustomerDetailHeader(
             fontWeight = FontWeight.Bold
         )
 
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(AppDimens.SpacingExtraSmall))
 
         SyncStatusBadge(isSynced = isSynced)
     }
@@ -69,7 +69,7 @@ private fun CustomerDetailHeaderPreview() {
         CustomerDetailHeader(
             name = "Azure Interior",
             isSynced = false,
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(AppDimens.SpacingLarge)
         )
     }
 }

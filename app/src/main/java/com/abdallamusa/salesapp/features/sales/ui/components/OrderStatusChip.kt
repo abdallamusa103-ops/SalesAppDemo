@@ -13,8 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import com.abdallamusa.salesapp.R
+import com.abdallamusa.salesapp.core.theme.AppDimens
 import com.abdallamusa.salesapp.core.theme.SalesAppTheme
 import com.abdallamusa.salesapp.core.theme.StatusCancelledRed
 import com.abdallamusa.salesapp.core.theme.StatusDraftAmber
@@ -33,9 +33,12 @@ fun OrderStatusChip(
 
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(6.dp))
+            .clip(RoundedCornerShape(AppDimens.CornerRadiusSmall))
             .background(backgroundColor)
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(
+                horizontal = AppDimens.SpacingSmall,
+                vertical = AppDimens.SpacingTiny
+            )
     ) {
         Text(
             text = stringResource(textRes),
@@ -50,8 +53,8 @@ fun OrderStatusChip(
 private fun OrderStatusChipPreview() {
     SalesAppTheme {
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(AppDimens.SpacingSmall),
+            modifier = Modifier.padding(AppDimens.SpacingLarge)
         ) {
             OrderStatusChip(state = "draft")
             OrderStatusChip(state = "sale")

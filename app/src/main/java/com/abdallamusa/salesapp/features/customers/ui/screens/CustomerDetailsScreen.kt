@@ -26,10 +26,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.abdallamusa.salesapp.R
+import com.abdallamusa.salesapp.core.theme.AppDimens
 import com.abdallamusa.salesapp.core.theme.SalesAppTheme
+import com.abdallamusa.salesapp.core.ui.components.ErrorBanner
 import com.abdallamusa.salesapp.features.customers.domain.model.Customer
 import com.abdallamusa.salesapp.features.customers.ui.components.CustomerDetailHeader
 import com.abdallamusa.salesapp.features.customers.ui.components.CustomerInfoSection
@@ -49,6 +50,7 @@ fun CustomerDetailsScreen(
         uiState = uiState,
         onPhoneChange = viewModel::onPhoneChanged,
         onSavePhone = viewModel::savePhone,
+        onDismissError = viewModel::dismissError,
         onBackClick = onBackClick,
         modifier = modifier
     )
@@ -61,12 +63,18 @@ fun CustomerDetailsContent(
     onPhoneChange: (String) -> Unit,
     onSavePhone: () -> Unit,
     onBackClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onDismissError: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(text = stringResource(R.string.customer_details_title), fontWeight = FontWeight.Bold) },
+                title = {
+                    Text(
+                        text = stringResource(R.string.customer_details_title),
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -79,50 +87,59 @@ fun CustomerDetailsContent(
         },
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
-        if (uiState.isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            val customer = uiState.customer
-            if (customer != null) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                        .padding(horizontal = 16.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            if (uiState.isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    CircularProgressIndicator()
+                }
+            } else {
+                val customer = uiState.customer
+                if (customer != null) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = AppDimens.ScreenHorizontalPadding)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(AppDimens.SpacingLarge)
+                    ) {
+                        Spacer(modifier = Modifier.height(AppDimens.SpacingSmall))
 
-                    CustomerDetailHeader(
-                        name = customer.name,
-                        isSynced = customer.isSynced
-                    )
+                        CustomerDetailHeader(
+                            name = customer.name,
+                            isSynced = customer.isSynced
+                        )
 
-                    CustomerInfoSection(
-                        email = customer.email,
-                        street = customer.street,
-                        city = customer.city
-                    )
+                        CustomerInfoSection(
+                            email = customer.email,
+                            street = customer.street,
+                            city = customer.city
+                        )
 
-                    CustomerPhoneEditor(
-                        phoneInput = uiState.phoneInput,
-                        onPhoneChange = onPhoneChange,
-                        onSaveClick = onSavePhone,
-                        isSaving = uiState.isSaving,
-                        saveSuccess = uiState.saveSuccess
-                    )
+                        CustomerPhoneEditor(
+                            phoneInput = uiState.phoneInput,
+                            onPhoneChange = onPhoneChange,
+                            onSaveClick = onSavePhone,
+                            isSaving = uiState.isSaving,
+                            saveSuccess = uiState.saveSuccess
+                        )
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(AppDimens.SpacingExtraLarge))
+                    }
                 }
             }
+
+            ErrorBanner(
+                errorMessage = uiState.errorMessage,
+                onDismiss = onDismissError,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
         }
     }
 }

@@ -2,6 +2,7 @@ package com.abdallamusa.salesapp.features.sales.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.abdallamusa.salesapp.core.ui.ErrorBannerManager
 import com.abdallamusa.salesapp.features.sales.domain.SalesOrder
 import com.abdallamusa.salesapp.features.sales.domain.SalesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,7 +16,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SalesOrderViewModel @Inject constructor(
-    private val salesRepository: SalesRepository
+    private val salesRepository: SalesRepository,
+    private val errorBannerManager: ErrorBannerManager
 ) : ViewModel() {
 
     private val _isLoading = MutableStateFlow(false)
@@ -54,6 +56,7 @@ class SalesOrderViewModel @Inject constructor(
             salesRepository.refreshSalesOrders()
                 .onFailure { error ->
                     _errorMessage.value = error.message
+                    errorBannerManager.showError(error.message)
                 }
             _isLoading.value = false
         }
@@ -71,12 +74,18 @@ class SalesOrderViewModel @Inject constructor(
         _selectedOrder.value = null
     }
 
+    fun dismissError() {
+        _errorMessage.value = null
+        errorBannerManager.dismissError()
+    }
+
     fun confirmOrder(orderId: Int) {
         viewModelScope.launch {
             _isConfirming.value = true
             salesRepository.confirmOrder(orderId)
                 .onFailure { error ->
                     _errorMessage.value = error.message
+                    errorBannerManager.showError(error.message)
                 }
             _isConfirming.value = false
         }
