@@ -70,6 +70,7 @@ class CustomerViewModel @Inject constructor(
         viewModelScope.launch {
             _isRefreshing.value = true
             _errorMessage.value = null
+            errorBannerManager.dismissError()
             customerRepository.refreshCustomers()
                 .onFailure { error ->
                     _errorMessage.value = error.message

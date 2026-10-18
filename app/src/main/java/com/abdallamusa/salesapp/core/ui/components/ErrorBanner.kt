@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,11 +43,10 @@ fun ErrorBanner(
         exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
         modifier = modifier
             .fillMaxWidth()
-            .navigationBarsPadding()
             .imePadding()
             .padding(
                 horizontal = AppDimens.ScreenHorizontalPadding,
-                vertical = AppDimens.SpacingMedium
+                vertical = AppDimens.SpacingSmall
             )
     ) {
         Surface(
@@ -108,7 +106,7 @@ fun ErrorBanner(
 private fun ErrorBannerPreview() {
     SalesAppTheme {
         ErrorBanner(
-            errorMessage = "Access Denied",
+            errorMessage = "No internet connection. Please check your network and try again.",
             onDismiss = {}
         )
     }

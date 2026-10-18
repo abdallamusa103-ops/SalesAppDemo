@@ -1,9 +1,6 @@
 package com.abdallamusa.salesapp.core.network
 
 import com.abdallamusa.salesapp.BuildConfig
-import com.abdallamusa.salesapp.core.datastore.SessionPreference
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.runBlocking
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Interceptor
 import okhttp3.Response
@@ -11,9 +8,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class DynamicUrlInterceptor @Inject constructor(
-    private val sessionPreference: SessionPreference
-) : Interceptor {
+class DynamicUrlInterceptor @Inject constructor() : Interceptor {
 
     @Volatile
     private var cachedBaseUrl: String? = null
@@ -25,9 +20,8 @@ class DynamicUrlInterceptor @Inject constructor(
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
 
-        val baseUrl = cachedBaseUrl ?: runBlocking {
-            sessionPreference.sessionFlow.firstOrNull()?.serverUrl?.trim()?.trimEnd('/')
-        } ?: BuildConfig.ODOO_BASE_URL.trim().trimEnd('/')
+        val baseUrl = cachedBaseUrl
+            ?: BuildConfig.ODOO_BASE_URL.trim().trimEnd('/')
 
         if (baseUrl.isBlank()) {
             return chain.proceed(originalRequest)

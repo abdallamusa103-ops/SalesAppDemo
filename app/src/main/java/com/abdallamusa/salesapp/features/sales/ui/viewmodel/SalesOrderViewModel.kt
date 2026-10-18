@@ -6,6 +6,7 @@ import com.abdallamusa.salesapp.core.ui.ErrorBannerManager
 import com.abdallamusa.salesapp.features.sales.domain.SalesOrder
 import com.abdallamusa.salesapp.features.sales.domain.SalesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -24,6 +25,8 @@ class SalesOrderViewModel @Inject constructor(
     private val _selectedOrder = MutableStateFlow<SalesOrder?>(null)
     private val _isConfirming = MutableStateFlow(false)
     private val _errorMessage = MutableStateFlow<String?>(null)
+
+    private var selectedOrderJob: Job? = null
 
     val uiState: StateFlow<SalesOrdersUiState> = combine(
         salesRepository.salesOrdersFlow,
@@ -53,6 +56,7 @@ class SalesOrderViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
+            errorBannerManager.dismissError()
             salesRepository.refreshSalesOrders()
                 .onFailure { error ->
                     _errorMessage.value = error.message
@@ -63,7 +67,8 @@ class SalesOrderViewModel @Inject constructor(
     }
 
     fun onOrderClick(order: SalesOrder) {
-        viewModelScope.launch {
+        selectedOrderJob?.cancel()
+        selectedOrderJob = viewModelScope.launch {
             salesRepository.getOrderWithProductsFlow(order.id).collect { detailedOrder ->
                 _selectedOrder.value = detailedOrder ?: order
             }
@@ -71,6 +76,8 @@ class SalesOrderViewModel @Inject constructor(
     }
 
     fun onDismissDetails() {
+        selectedOrderJob?.cancel()
+        selectedOrderJob = null
         _selectedOrder.value = null
     }
 
@@ -82,6 +89,8 @@ class SalesOrderViewModel @Inject constructor(
     fun confirmOrder(orderId: Int) {
         viewModelScope.launch {
             _isConfirming.value = true
+            _errorMessage.value = null
+            errorBannerManager.dismissError()
             salesRepository.confirmOrder(orderId)
                 .onFailure { error ->
                     _errorMessage.value = error.message

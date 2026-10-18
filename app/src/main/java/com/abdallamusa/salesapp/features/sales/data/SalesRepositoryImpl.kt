@@ -2,6 +2,7 @@ package com.abdallamusa.salesapp.features.sales.data
 
 import com.abdallamusa.salesapp.core.network.OdooApiService
 import com.abdallamusa.salesapp.core.network.model.OdooRpcRequest
+import com.abdallamusa.salesapp.core.utils.ErrorConstants
 import com.abdallamusa.salesapp.features.sales.domain.OrderLine
 import com.abdallamusa.salesapp.features.sales.domain.SalesOrder
 import com.abdallamusa.salesapp.features.sales.domain.SalesRepository
@@ -36,7 +37,7 @@ class SalesRepositoryImpl @Inject constructor(
                 "model" to "sale.order",
                 "method" to "search_read",
                 "args" to listOf(
-                    listOf(listOf("state", "in", listOf("draft", "sent", "sale")))
+                    listOf(listOf("state", "in", listOf("draft", "sent", "sale", "done", "cancel")))
                 ),
                 "kwargs" to mapOf(
                     "fields" to listOf("id", "name", "partner_id", "date_order", "amount_total", "currency_id", "state", "order_line"),
@@ -47,7 +48,9 @@ class SalesRepositoryImpl @Inject constructor(
             val orderResponse = odooApiService.callKw("sale.order", "search_read", OdooRpcRequest(params = orderParams))
 
             if (!orderResponse.isSuccessful) {
-                return@withContext Result.failure(Exception("HTTP Error ${orderResponse.code()}"))
+                return@withContext Result.failure(
+                    Exception(ErrorConstants.httpError(orderResponse.code(), orderResponse.message()))
+                )
             }
 
             val orderRpc = orderResponse.body()
@@ -73,7 +76,6 @@ class SalesRepositoryImpl @Inject constructor(
                     }
                 }
 
-                // Dynamic Currency from Odoo's currency_id: [14, "LE"]
                 var currencyName = ""
                 val currencyElem = obj.get("currency_id")
                 if (currencyElem != null && currencyElem.isJsonArray) {
@@ -83,7 +85,6 @@ class SalesRepositoryImpl @Inject constructor(
                     }
                 }
 
-                // Collect order line IDs
                 val lineIdsElem = obj.get("order_line")
                 if (lineIdsElem != null && lineIdsElem.isJsonArray) {
                     lineIdsElem.asJsonArray.forEach { lineIdElem ->
@@ -95,26 +96,25 @@ class SalesRepositoryImpl @Inject constructor(
 
                 SalesOrderEntity(
                     id = id,
-                    name = obj.get("name")?.takeIf { !it.isJsonNull }?.asString.orEmpty(),
+                    name = obj.get("name")?.takeIf { !it.isJsonNull && it.isJsonPrimitive && it.asJsonPrimitive.isString }?.asString.orEmpty(),
                     customerId = partnerId,
                     customerName = partnerName,
-                    dateOrder = obj.get("date_order")?.takeIf { !it.isJsonNull }?.asString,
-                    amountTotal = obj.get("amount_total")?.takeIf { !it.isJsonNull }?.asDouble ?: 0.0,
+                    dateOrder = obj.get("date_order")?.takeIf { !it.isJsonNull && it.isJsonPrimitive && it.asJsonPrimitive.isString }?.asString,
+                    amountTotal = obj.get("amount_total")?.takeIf { !it.isJsonNull && it.isJsonPrimitive && it.asJsonPrimitive.isNumber }?.asDouble ?: 0.0,
                     currency = currencyName,
-                    state = obj.get("state")?.takeIf { !it.isJsonNull }?.asString ?: "draft"
+                    state = obj.get("state")?.takeIf { !it.isJsonNull && it.isJsonPrimitive && it.asJsonPrimitive.isString }?.asString ?: "draft"
                 )
             }
 
             salesOrderDao.upsertSalesOrders(orderEntities)
 
-            // Fetch product lines if any exist
             if (allLineIds.isNotEmpty()) {
                 fetchAndCacheOrderLines(allLineIds)
             }
 
             Result.success(Unit)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(Exception(ErrorConstants.mapThrowableToMessage(e)))
         }
     }
 
@@ -177,7 +177,9 @@ class SalesRepositoryImpl @Inject constructor(
             val response = odooApiService.callKw("sale.order", "action_confirm", OdooRpcRequest(params = params))
 
             if (!response.isSuccessful) {
-                return@withContext Result.failure(Exception("HTTP Error ${response.code()}"))
+                return@withContext Result.failure(
+                    Exception(ErrorConstants.httpError(response.code(), response.message()))
+                )
             }
 
             val rpcResponse = response.body()
@@ -185,11 +187,10 @@ class SalesRepositoryImpl @Inject constructor(
                 return@withContext Result.failure(Exception(rpcResponse.error.readableMessage))
             }
 
-            // Room update
             salesOrderDao.updateOrderState(orderId, "sale")
             Result.success(Unit)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(Exception(ErrorConstants.mapThrowableToMessage(e)))
         }
     }
 

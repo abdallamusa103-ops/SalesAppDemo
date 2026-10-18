@@ -7,6 +7,7 @@ import com.abdallamusa.salesapp.core.network.OdooApiService
 import com.abdallamusa.salesapp.core.network.OdooServerConfig
 import com.abdallamusa.salesapp.core.network.OdooXmlRpcClient
 import com.abdallamusa.salesapp.core.network.model.OdooRpcRequest
+import com.abdallamusa.salesapp.core.utils.ErrorConstants
 import com.abdallamusa.salesapp.features.auth.domain.AuthRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -39,7 +40,13 @@ class AuthRepositoryImpl @Inject constructor(
             return@withContext restResult
         }
 
-        // 2. Fallback Strategy: If REST failed, try Odoo XML-RPC
+        // If REST returned an explicit Odoo credential error (like Access Denied), return it immediately
+        val restError = restResult.exceptionOrNull()
+        if (restError != null && restError.message?.contains("Access Denied", ignoreCase = true) == true) {
+            return@withContext Result.failure(Exception(ErrorConstants.mapThrowableToMessage(restError)))
+        }
+
+        // 2. Fallback Strategy: If REST endpoint was unreachable/unsupported, try Odoo XML-RPC
         val xmlRpcResult = odooXmlRpcClient.authenticate(cleanServerUrl, db, username, password)
         if (xmlRpcResult.isSuccess) {
             val uid = xmlRpcResult.getOrThrow()
@@ -60,11 +67,14 @@ class AuthRepositoryImpl @Inject constructor(
             return@withContext Result.success(session)
         }
 
-        // 3. Both failed: surface the exact error message from the server response
-        val errorMessage = restResult.exceptionOrNull()?.message
-            ?: xmlRpcResult.exceptionOrNull()?.message
-            ?: "Authentication failed"
-        Result.failure(Exception(errorMessage))
+        // 3. Both failed: map network or server exception to clean user-facing message
+        val primaryThrowable = restError ?: xmlRpcResult.exceptionOrNull()
+        val cleanMessage = if (primaryThrowable != null) {
+            ErrorConstants.mapThrowableToMessage(primaryThrowable)
+        } else {
+            ErrorConstants.ERROR_AUTH_FAILED
+        }
+        Result.failure(Exception(cleanMessage))
     }
 
     private suspend fun tryRestAuthentication(
@@ -82,7 +92,9 @@ class AuthRepositoryImpl @Inject constructor(
             val response = odooApiService.authenticate(OdooRpcRequest(params = authParams))
 
             if (!response.isSuccessful) {
-                return Result.failure(Exception("HTTP Error ${response.code()}: ${response.message()}"))
+                return Result.failure(
+                    Exception(ErrorConstants.httpError(response.code(), response.message()))
+                )
             }
 
             val rpcResponse = response.body()
@@ -99,7 +111,7 @@ class AuthRepositoryImpl @Inject constructor(
             }
 
             if (uid == null || uid <= 0) {
-                return Result.failure(Exception("Access Denied: Invalid username or password"))
+                return Result.failure(Exception(ErrorConstants.ERROR_ACCESS_DENIED))
             }
 
             var sessionId: String? = null
@@ -111,12 +123,24 @@ class AuthRepositoryImpl @Inject constructor(
                     break
                 }
             }
+            val resolvedSessionId = sessionId ?: resultObj?.get("session_id")?.takeIf { !it.isJsonNull }?.asString ?: "session_$uid"
 
-            val isInternalUser = checkIsInternalUser(uid)
+            // Save session cookie first so subsequent call_kw requests carry the authenticated Cookie
+            sessionPreference.saveSession(
+                userId = uid,
+                sessionId = resolvedSessionId,
+                isInternalUser = true,
+                serverUrl = serverUrl,
+                dbName = db
+            )
+
+            val isInternalFromAuth = resultObj?.get("is_internal_user")?.takeIf { !it.isJsonNull && it.isJsonPrimitive }?.asBoolean
+                ?: resultObj?.get("is_system")?.takeIf { !it.isJsonNull && it.isJsonPrimitive }?.asBoolean
+            val isInternalUser = isInternalFromAuth ?: checkIsInternalUser(uid)
 
             val session = UserSession(
                 userId = uid,
-                sessionId = sessionId ?: "session_$uid",
+                sessionId = resolvedSessionId,
                 isInternalUser = isInternalUser,
                 serverUrl = serverUrl,
                 dbName = db
@@ -124,7 +148,7 @@ class AuthRepositoryImpl @Inject constructor(
 
             sessionPreference.saveSession(
                 userId = uid,
-                sessionId = session.sessionId.orEmpty(),
+                sessionId = resolvedSessionId,
                 isInternalUser = isInternalUser,
                 serverUrl = serverUrl,
                 dbName = db
@@ -132,7 +156,7 @@ class AuthRepositoryImpl @Inject constructor(
 
             Result.success(session)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(Exception(ErrorConstants.mapThrowableToMessage(e)))
         }
     }
 
@@ -141,7 +165,7 @@ class AuthRepositoryImpl @Inject constructor(
             val groupCheckParams = mapOf(
                 "model" to "res.users",
                 "method" to "has_group",
-                "args" to listOf("base.group_user"),
+                "args" to listOf(listOf(uid), "base.group_user"),
                 "kwargs" to emptyMap<String, Any>()
             )
             val response = odooApiService.callKw("res.users", "has_group", OdooRpcRequest(params = groupCheckParams))

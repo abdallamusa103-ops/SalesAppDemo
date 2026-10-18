@@ -6,16 +6,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -33,6 +34,7 @@ import com.abdallamusa.salesapp.R
 import com.abdallamusa.salesapp.core.theme.AppDimens
 import com.abdallamusa.salesapp.core.theme.SalesAppTheme
 import com.abdallamusa.salesapp.core.ui.components.ErrorBanner
+import com.abdallamusa.salesapp.core.ui.components.RefreshIconButton
 import com.abdallamusa.salesapp.features.customers.domain.model.Customer
 import com.abdallamusa.salesapp.features.customers.ui.CustomerListUiState
 import com.abdallamusa.salesapp.features.customers.ui.components.CustomerCard
@@ -72,27 +74,33 @@ fun CustomerListContent(
 ) {
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.customers_title),
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                actions = {
-                    IconButton(onClick = onRefresh) {
-                        Icon(imageVector = Icons.Default.Refresh, contentDescription = null)
-                    }
-                    if (onLogoutClick != null) {
-                        IconButton(onClick = onLogoutClick) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                                contentDescription = stringResource(R.string.action_logout)
-                            )
+            Column {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = stringResource(R.string.customers_title),
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    actions = {
+                        RefreshIconButton(
+                            isRefreshing = uiState.isRefreshing,
+                            onClick = onRefresh
+                        )
+                        if (onLogoutClick != null) {
+                            IconButton(onClick = onLogoutClick) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                                    contentDescription = stringResource(R.string.action_logout)
+                                )
+                            }
                         }
                     }
+                )
+                if (uiState.isRefreshing) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
-            )
+            }
         },
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
