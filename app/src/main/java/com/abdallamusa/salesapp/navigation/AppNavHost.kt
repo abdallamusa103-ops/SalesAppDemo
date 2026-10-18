@@ -6,6 +6,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -37,8 +38,9 @@ fun AppNavHost(
     }
 
     val session = sessionState
-    val isLoggedIn = session?.isLoggedIn == true
-    val startDestination = if (isLoggedIn) NavRoute.Main.route else NavRoute.Login.route
+    val startDestination = remember {
+        if (session?.isLoggedIn == true) NavRoute.Main.route else NavRoute.Login.route
+    }
 
     NavHost(
         navController = navController,
@@ -59,7 +61,7 @@ fun AppNavHost(
 
         composable(NavRoute.Main.route) {
             MainScreen(
-                isInternalUser = session?.isInternalUser ?: false,
+                isInternalUser = session?.isInternalUser == true,
                 onNavigateToCustomerDetails = { customerId ->
                     viewModel.dismissError()
                     navController.navigate(NavRoute.CustomerDetails.createRoute(customerId))

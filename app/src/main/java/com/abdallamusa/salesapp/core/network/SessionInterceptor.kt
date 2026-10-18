@@ -13,11 +13,18 @@ class SessionInterceptor @Inject constructor(
     private val sessionPreference: SessionPreference
 ) : Interceptor {
 
+    @Volatile
+    private var activeSessionId: String? = null
+
+    fun setActiveSessionId(sessionId: String?) {
+        activeSessionId = sessionId
+    }
+
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
         val builder = originalRequest.newBuilder()
 
-        val sessionId = runBlocking {
+        val sessionId = activeSessionId?.takeIf { it.isNotBlank() } ?: runBlocking {
             sessionPreference.sessionFlow.firstOrNull()?.sessionId
         }
 

@@ -6,6 +6,7 @@ import com.abdallamusa.salesapp.core.network.DynamicUrlInterceptor
 import com.abdallamusa.salesapp.core.network.OdooApiService
 import com.abdallamusa.salesapp.core.network.OdooServerConfig
 import com.abdallamusa.salesapp.core.network.OdooXmlRpcClient
+import com.abdallamusa.salesapp.core.network.SessionInterceptor
 import com.abdallamusa.salesapp.core.network.model.OdooRpcRequest
 import com.abdallamusa.salesapp.core.utils.ErrorConstants
 import com.abdallamusa.salesapp.features.auth.domain.AuthRepository
@@ -23,6 +24,7 @@ class AuthRepositoryImpl @Inject constructor(
     private val odooServerConfig: OdooServerConfig,
     private val sessionPreference: SessionPreference,
     private val dynamicUrlInterceptor: DynamicUrlInterceptor,
+    private val sessionInterceptor: SessionInterceptor,
     private val salesOrderDao: SalesOrderDao
 ) : AuthRepository {
 
@@ -54,19 +56,14 @@ class AuthRepositoryImpl @Inject constructor(
             val uid = xmlRpcResult.getOrThrow()
             val hasBaseGroupUser = odooXmlRpcClient
                 .checkHasGroup(cleanServerUrl, db, uid, password, "base.group_user")
+                .getOrDefault(true)
+            val canAccessSaleOrders = odooXmlRpcClient
+                .checkSaleOrderAccess(cleanServerUrl, db, uid, password)
                 .getOrDefault(false)
-            val canAccessSaleOrders = if (hasBaseGroupUser) {
-                odooXmlRpcClient.checkSaleOrderAccess(cleanServerUrl, db, uid, password)
-                    .getOrDefault(false)
-            } else {
-                false
-            }
             val isInternalUser = hasBaseGroupUser && canAccessSaleOrders
 
-            if (!isInternalUser) {
-                salesOrderDao.clearAllOrderLines()
-                salesOrderDao.clearSalesOrders()
-            }
+            salesOrderDao.clearAllOrderLines()
+            salesOrderDao.clearSalesOrders()
 
             val session = UserSession(
                 userId = uid,
@@ -76,6 +73,7 @@ class AuthRepositoryImpl @Inject constructor(
                 dbName = db,
                 password = password
             )
+            sessionInterceptor.setActiveSessionId(session.sessionId)
             sessionPreference.saveSession(
                 userId = uid,
                 sessionId = session.sessionId.orEmpty(),
@@ -145,17 +143,10 @@ class AuthRepositoryImpl @Inject constructor(
             }
             val resolvedSessionId = sessionId ?: resultObj?.get("session_id")?.takeIf { !it.isJsonNull }?.asString ?: "session_$uid"
 
-            // Save session cookie first so subsequent call_kw requests carry the authenticated Cookie
-            sessionPreference.saveSession(
-                userId = uid,
-                sessionId = resolvedSessionId,
-                isInternalUser = false,
-                serverUrl = serverUrl,
-                dbName = db,
-                password = password
-            )
+            // Set in-memory cookie on SessionInterceptor so subsequent call_kw checks are authenticated
+            // without emitting an intermediate isInternalUser = false state to DataStore
+            sessionInterceptor.setActiveSessionId(resolvedSessionId)
 
-            // Always verify both base.group_user AND sale.order read access so Light/Portal users are gated
             val isInternalUser = checkIsInternalUser(
                 uid = uid,
                 serverUrl = serverUrl,
@@ -163,10 +154,8 @@ class AuthRepositoryImpl @Inject constructor(
                 password = password
             )
 
-            if (!isInternalUser) {
-                salesOrderDao.clearAllOrderLines()
-                salesOrderDao.clearSalesOrders()
-            }
+            salesOrderDao.clearAllOrderLines()
+            salesOrderDao.clearSalesOrders()
 
             val session = UserSession(
                 userId = uid,
@@ -199,7 +188,7 @@ class AuthRepositoryImpl @Inject constructor(
         password: String
     ): Boolean {
         val hasGroupUser = checkHasGroupBaseUser(uid, serverUrl, db, password)
-        if (!hasGroupUser) return false
+        if (hasGroupUser == false) return false
         return checkCanReadSaleOrders(uid, serverUrl, db, password)
     }
 
@@ -208,8 +197,7 @@ class AuthRepositoryImpl @Inject constructor(
         serverUrl: String,
         db: String,
         password: String
-    ): Boolean {
-        // 1. Try Odoo 17+ @api.model signature: args = ["base.group_user"]
+    ): Boolean? {
         val argVariations = listOf(
             listOf("base.group_user"),
             listOf(listOf(uid), "base.group_user")
@@ -236,7 +224,7 @@ class AuthRepositoryImpl @Inject constructor(
         }
 
         return odooXmlRpcClient.checkHasGroup(serverUrl, db, uid, password, "base.group_user")
-            .getOrDefault(false)
+            .getOrNull()
     }
 
     private suspend fun checkCanReadSaleOrders(
@@ -246,20 +234,21 @@ class AuthRepositoryImpl @Inject constructor(
         password: String
     ): Boolean {
         try {
-            val accessParams = mapOf(
+            val orderProbeParams = mapOf(
                 "model" to "sale.order",
-                "method" to "check_access_rights",
-                "args" to listOf("read"),
-                "kwargs" to mapOf("raise_exception" to false)
+                "method" to "search_read",
+                "args" to listOf(emptyList<Any>()),
+                "kwargs" to mapOf(
+                    "fields" to listOf("id"),
+                    "limit" to 1
+                )
             )
-            val response = odooApiService.callKw("sale.order", "check_access_rights", OdooRpcRequest(params = accessParams))
+            val response = odooApiService.callKw("sale.order", "search_read", OdooRpcRequest(params = orderProbeParams))
             val rpcBody = response.body()
-            if (response.isSuccessful && rpcBody?.error == null) {
-                val result = rpcBody?.result
-                if (result != null && result.isJsonPrimitive && result.asJsonPrimitive.isBoolean) {
-                    return result.asJsonPrimitive.asBoolean
-                }
-            } else if (rpcBody?.error != null) {
+            if (response.isSuccessful && rpcBody?.error == null && rpcBody?.result != null) {
+                return true
+            }
+            if (rpcBody?.error != null) {
                 return false
             }
         } catch (_: Exception) {
@@ -271,6 +260,7 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun logout() = withContext(Dispatchers.IO) {
+        sessionInterceptor.setActiveSessionId(null)
         salesOrderDao.clearAllOrderLines()
         salesOrderDao.clearSalesOrders()
         sessionPreference.clearSession()

@@ -178,12 +178,16 @@ class OdooXmlRpcClient @Inject constructor() {
                     <param><value><int>$uid</int></value></param>
                     <param><value><string>${escapeXml(password)}</string></value></param>
                     <param><value><string>sale.order</string></value></param>
-                    <param><value><string>check_access_rights</string></value></param>
+                    <param><value><string>search_read</string></value></param>
                     <param>
                         <value>
                             <array>
                                 <data>
-                                    <value><string>read</string></value>
+                                    <value>
+                                        <array>
+                                            <data></data>
+                                        </array>
+                                    </value>
                                 </data>
                             </array>
                         </value>
@@ -192,8 +196,18 @@ class OdooXmlRpcClient @Inject constructor() {
                         <value>
                             <struct>
                                 <member>
-                                    <name>raise_exception</name>
-                                    <value><boolean>0</boolean></value>
+                                    <name>fields</name>
+                                    <value>
+                                        <array>
+                                            <data>
+                                                <value><string>id</string></value>
+                                            </data>
+                                        </array>
+                                    </value>
+                                </member>
+                                <member>
+                                    <name>limit</name>
+                                    <value><int>1</int></value>
                                 </member>
                             </struct>
                         </value>
@@ -214,8 +228,7 @@ class OdooXmlRpcClient @Inject constructor() {
                 return@withContext Result.success(false)
             }
 
-            val boolRegex = Regex("<boolean>\\s*(1|true)\\s*</boolean>", RegexOption.IGNORE_CASE)
-            Result.success(boolRegex.containsMatchIn(body))
+            Result.success(true)
         } catch (_: Exception) {
             Result.success(false)
         }
