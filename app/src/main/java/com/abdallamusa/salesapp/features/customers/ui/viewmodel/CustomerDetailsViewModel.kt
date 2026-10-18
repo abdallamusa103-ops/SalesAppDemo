@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.abdallamusa.salesapp.core.ui.ErrorBannerManager
+import com.abdallamusa.salesapp.core.utils.ErrorConstants
 import com.abdallamusa.salesapp.features.customers.domain.repository.CustomerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -55,23 +56,31 @@ class CustomerDetailsViewModel @Inject constructor(
     fun savePhone() {
         val current = _uiState.value
         val customer = current.customer ?: return
+        val previousPhone = customer.phone.orEmpty()
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isSaving = true, errorMessage = null) }
+            _uiState.update { it.copy(isSaving = true, errorMessage = null, saveSuccess = false) }
             customerRepository.updatePhoneOffline(customer.id, current.phoneInput.trim())
                 .fold(
                     onSuccess = {
                         _uiState.update { it.copy(isSaving = false, saveSuccess = true) }
                     },
                     onFailure = { error ->
-                        _uiState.update {
-                            it.copy(
+                        val isPermissionError = ErrorConstants.isAccessError(error)
+                        val displayMessage = if (isPermissionError) {
+                            ErrorConstants.ERROR_PERMISSION_DENIED_WRITE_CUSTOMER
+                        } else {
+                            error.message
+                        }
+                        _uiState.update { state ->
+                            state.copy(
                                 isSaving = false,
-                                saveSuccess = true,
-                                errorMessage = error.message
+                                saveSuccess = !isPermissionError,
+                                phoneInput = if (isPermissionError) previousPhone else state.phoneInput,
+                                errorMessage = displayMessage
                             )
                         }
-                        errorBannerManager.showError(error.message)
+                        errorBannerManager.showError(displayMessage)
                     }
                 )
         }

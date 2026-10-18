@@ -7,6 +7,7 @@ data class UserSession(
     val sessionId: String? = null,
     val serverUrl: String? = null,
     val dbName: String? = null,
+    val password: String? = null,
 ) {
     val isLoggedIn: Boolean
         get()

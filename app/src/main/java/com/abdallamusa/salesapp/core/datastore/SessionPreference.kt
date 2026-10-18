@@ -37,13 +37,16 @@ class SessionPreference @Inject constructor(
         .map { prefs ->
             val encryptedSessionId = prefs[KEY_SESSION_ID].orEmpty()
             val decryptedSessionId = encryptionEngine.decrypt(encryptedSessionId)
+            val encryptedPassword = prefs[KEY_PASSWORD].orEmpty()
+            val decryptedPassword = encryptionEngine.decrypt(encryptedPassword)
 
             UserSession(
                 userId = prefs[KEY_USER_ID],
                 sessionId = decryptedSessionId.ifEmpty { null },
                 isInternalUser = prefs[KEY_IS_INTERNAL] ?: false,
                 serverUrl = prefs[KEY_SERVER_URL],
-                dbName = prefs[KEY_DB_NAME]
+                dbName = prefs[KEY_DB_NAME],
+                password = decryptedPassword.ifEmpty { null }
             )
         }
 
@@ -52,15 +55,32 @@ class SessionPreference @Inject constructor(
         sessionId: String,
         isInternalUser: Boolean,
         serverUrl: String,
-        dbName: String
+        dbName: String,
+        password: String? = null
     ) {
         val encryptedSessionId = encryptionEngine.encrypt(sessionId)
+        val encryptedPassword = if (!password.isNullOrEmpty()) {
+            encryptionEngine.encrypt(password)
+        } else {
+            ""
+        }
         dataStore.edit { prefs ->
             prefs[KEY_USER_ID] = userId
             prefs[KEY_SESSION_ID] = encryptedSessionId
             prefs[KEY_IS_INTERNAL] = isInternalUser
             prefs[KEY_SERVER_URL] = serverUrl
             prefs[KEY_DB_NAME] = dbName
+            if (encryptedPassword.isNotEmpty()) {
+                prefs[KEY_PASSWORD] = encryptedPassword
+            } else {
+                prefs.remove(KEY_PASSWORD)
+            }
+        }
+    }
+
+    suspend fun updateIsInternalUser(isInternalUser: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[KEY_IS_INTERNAL] = isInternalUser
         }
     }
 
@@ -74,5 +94,6 @@ class SessionPreference @Inject constructor(
         private val KEY_IS_INTERNAL = booleanPreferencesKey("is_internal_user")
         private val KEY_SERVER_URL = stringPreferencesKey("server_url")
         private val KEY_DB_NAME = stringPreferencesKey("db_name")
+        private val KEY_PASSWORD = stringPreferencesKey("user_password")
     }
 }

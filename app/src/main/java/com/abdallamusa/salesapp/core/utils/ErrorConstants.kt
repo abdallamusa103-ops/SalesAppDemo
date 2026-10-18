@@ -14,6 +14,29 @@ object ErrorConstants {
     const val ERROR_ODOO_SERVER = "Odoo Server Error"
     const val ERROR_NETWORK_UNAVAILABLE = "No internet connection. Please check your network and try again."
     const val ERROR_CONNECTION_TIMEOUT = "Connection timed out. Please try again."
+    const val ERROR_PERMISSION_DENIED_WRITE_CUSTOMER =
+        "Permission denied: Your account does not have write access to update customer records."
+
+    fun isAccessError(
+        httpCode: Int? = null,
+        errorName: String? = null,
+        errorMessage: String? = null
+    ): Boolean {
+        if (httpCode == 401 || httpCode == 403) return true
+        if (errorName?.contains("AccessError", ignoreCase = true) == true) return true
+        if (errorName?.contains("AccessDenied", ignoreCase = true) == true) return true
+        val msg = errorMessage.orEmpty()
+        return msg.contains("AccessError", ignoreCase = true) ||
+            msg.contains("Access Denied", ignoreCase = true) ||
+            msg.contains("not allowed to modify", ignoreCase = true) ||
+            msg.contains("not allowed to", ignoreCase = true) ||
+            msg == ERROR_PERMISSION_DENIED_WRITE_CUSTOMER
+    }
+
+    fun isAccessError(throwable: Throwable?): Boolean {
+        if (throwable == null) return false
+        return isAccessError(errorMessage = throwable.message)
+    }
 
     fun httpError(code: Int, message: String? = null): String {
         return if (!message.isNullOrBlank()) {
@@ -26,6 +49,13 @@ object ErrorConstants {
     fun mapThrowableToMessage(throwable: Throwable): String {
         val rawMessage = throwable.message.orEmpty()
         return when {
+            isAccessError(errorMessage = rawMessage) -> {
+                if (rawMessage == ERROR_PERMISSION_DENIED_WRITE_CUSTOMER) {
+                    ERROR_PERMISSION_DENIED_WRITE_CUSTOMER
+                } else {
+                    rawMessage
+                }
+            }
             throwable is UnknownHostException ||
                 throwable is ConnectException ||
                 rawMessage.contains("Unable to resolve host", ignoreCase = true) ||

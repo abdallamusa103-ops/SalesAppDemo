@@ -9,6 +9,7 @@ import com.abdallamusa.salesapp.core.network.OdooXmlRpcClient
 import com.abdallamusa.salesapp.core.network.model.OdooRpcRequest
 import com.abdallamusa.salesapp.core.utils.ErrorConstants
 import com.abdallamusa.salesapp.features.auth.domain.AuthRepository
+import com.abdallamusa.salesapp.features.sales.data.SalesOrderDao
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -21,7 +22,8 @@ class AuthRepositoryImpl @Inject constructor(
     private val odooXmlRpcClient: OdooXmlRpcClient,
     private val odooServerConfig: OdooServerConfig,
     private val sessionPreference: SessionPreference,
-    private val dynamicUrlInterceptor: DynamicUrlInterceptor
+    private val dynamicUrlInterceptor: DynamicUrlInterceptor,
+    private val salesOrderDao: SalesOrderDao
 ) : AuthRepository {
 
     override val sessionFlow: Flow<UserSession> = sessionPreference.sessionFlow
@@ -50,19 +52,37 @@ class AuthRepositoryImpl @Inject constructor(
         val xmlRpcResult = odooXmlRpcClient.authenticate(cleanServerUrl, db, username, password)
         if (xmlRpcResult.isSuccess) {
             val uid = xmlRpcResult.getOrThrow()
+            val hasBaseGroupUser = odooXmlRpcClient
+                .checkHasGroup(cleanServerUrl, db, uid, password, "base.group_user")
+                .getOrDefault(false)
+            val canAccessSaleOrders = if (hasBaseGroupUser) {
+                odooXmlRpcClient.checkSaleOrderAccess(cleanServerUrl, db, uid, password)
+                    .getOrDefault(false)
+            } else {
+                false
+            }
+            val isInternalUser = hasBaseGroupUser && canAccessSaleOrders
+
+            if (!isInternalUser) {
+                salesOrderDao.clearAllOrderLines()
+                salesOrderDao.clearSalesOrders()
+            }
+
             val session = UserSession(
                 userId = uid,
                 sessionId = "xmlrpc_session_$uid",
-                isInternalUser = true,
+                isInternalUser = isInternalUser,
                 serverUrl = cleanServerUrl,
-                dbName = db
+                dbName = db,
+                password = password
             )
             sessionPreference.saveSession(
                 userId = uid,
                 sessionId = session.sessionId.orEmpty(),
                 isInternalUser = session.isInternalUser,
                 serverUrl = cleanServerUrl,
-                dbName = db
+                dbName = db,
+                password = password
             )
             return@withContext Result.success(session)
         }
@@ -129,21 +149,32 @@ class AuthRepositoryImpl @Inject constructor(
             sessionPreference.saveSession(
                 userId = uid,
                 sessionId = resolvedSessionId,
-                isInternalUser = true,
+                isInternalUser = false,
                 serverUrl = serverUrl,
-                dbName = db
+                dbName = db,
+                password = password
             )
 
-            val isInternalFromAuth = resultObj?.get("is_internal_user")?.takeIf { !it.isJsonNull && it.isJsonPrimitive }?.asBoolean
-                ?: resultObj?.get("is_system")?.takeIf { !it.isJsonNull && it.isJsonPrimitive }?.asBoolean
-            val isInternalUser = isInternalFromAuth ?: checkIsInternalUser(uid)
+            // Always verify both base.group_user AND sale.order read access so Light/Portal users are gated
+            val isInternalUser = checkIsInternalUser(
+                uid = uid,
+                serverUrl = serverUrl,
+                db = db,
+                password = password
+            )
+
+            if (!isInternalUser) {
+                salesOrderDao.clearAllOrderLines()
+                salesOrderDao.clearSalesOrders()
+            }
 
             val session = UserSession(
                 userId = uid,
                 sessionId = resolvedSessionId,
                 isInternalUser = isInternalUser,
                 serverUrl = serverUrl,
-                dbName = db
+                dbName = db,
+                password = password
             )
 
             sessionPreference.saveSession(
@@ -151,7 +182,8 @@ class AuthRepositoryImpl @Inject constructor(
                 sessionId = resolvedSessionId,
                 isInternalUser = isInternalUser,
                 serverUrl = serverUrl,
-                dbName = db
+                dbName = db,
+                password = password
             )
 
             Result.success(session)
@@ -160,23 +192,87 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    private suspend fun checkIsInternalUser(uid: Int): Boolean {
-        return try {
-            val groupCheckParams = mapOf(
-                "model" to "res.users",
-                "method" to "has_group",
-                "args" to listOf(listOf(uid), "base.group_user"),
-                "kwargs" to emptyMap<String, Any>()
-            )
-            val response = odooApiService.callKw("res.users", "has_group", OdooRpcRequest(params = groupCheckParams))
-            val result = response.body()?.result
-            result?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isBoolean }?.asBoolean ?: true
-        } catch (_: Exception) {
-            true
+    private suspend fun checkIsInternalUser(
+        uid: Int,
+        serverUrl: String,
+        db: String,
+        password: String
+    ): Boolean {
+        val hasGroupUser = checkHasGroupBaseUser(uid, serverUrl, db, password)
+        if (!hasGroupUser) return false
+        return checkCanReadSaleOrders(uid, serverUrl, db, password)
+    }
+
+    private suspend fun checkHasGroupBaseUser(
+        uid: Int,
+        serverUrl: String,
+        db: String,
+        password: String
+    ): Boolean {
+        // 1. Try Odoo 17+ @api.model signature: args = ["base.group_user"]
+        val argVariations = listOf(
+            listOf("base.group_user"),
+            listOf(listOf(uid), "base.group_user")
+        )
+        for (args in argVariations) {
+            try {
+                val params = mapOf(
+                    "model" to "res.users",
+                    "method" to "has_group",
+                    "args" to args,
+                    "kwargs" to emptyMap<String, Any>()
+                )
+                val response = odooApiService.callKw("res.users", "has_group", OdooRpcRequest(params = params))
+                val rpcBody = response.body()
+                if (response.isSuccessful && rpcBody?.error == null) {
+                    val result = rpcBody?.result
+                    if (result != null && result.isJsonPrimitive && result.asJsonPrimitive.isBoolean) {
+                        return result.asJsonPrimitive.asBoolean
+                    }
+                }
+            } catch (_: Exception) {
+                // Try next variation
+            }
         }
+
+        return odooXmlRpcClient.checkHasGroup(serverUrl, db, uid, password, "base.group_user")
+            .getOrDefault(false)
+    }
+
+    private suspend fun checkCanReadSaleOrders(
+        uid: Int,
+        serverUrl: String,
+        db: String,
+        password: String
+    ): Boolean {
+        try {
+            val accessParams = mapOf(
+                "model" to "sale.order",
+                "method" to "check_access_rights",
+                "args" to listOf("read"),
+                "kwargs" to mapOf("raise_exception" to false)
+            )
+            val response = odooApiService.callKw("sale.order", "check_access_rights", OdooRpcRequest(params = accessParams))
+            val rpcBody = response.body()
+            if (response.isSuccessful && rpcBody?.error == null) {
+                val result = rpcBody?.result
+                if (result != null && result.isJsonPrimitive && result.asJsonPrimitive.isBoolean) {
+                    return result.asJsonPrimitive.asBoolean
+                }
+            } else if (rpcBody?.error != null) {
+                return false
+            }
+        } catch (_: Exception) {
+            // Fall through to XML-RPC check
+        }
+
+        return odooXmlRpcClient.checkSaleOrderAccess(serverUrl, db, uid, password)
+            .getOrDefault(false)
     }
 
     override suspend fun logout() = withContext(Dispatchers.IO) {
+        salesOrderDao.clearAllOrderLines()
+        salesOrderDao.clearSalesOrders()
         sessionPreference.clearSession()
     }
 }

@@ -33,6 +33,9 @@ interface SalesOrderDao {
     @Query("DELETE FROM sales_orders")
     suspend fun clearSalesOrders()
 
+    @Query("DELETE FROM sales_order_lines")
+    suspend fun clearAllOrderLines()
+
     @Query("DELETE FROM sales_order_lines WHERE orderId = :orderId")
     suspend fun clearOrderLinesForOrder(orderId: Int)
 }

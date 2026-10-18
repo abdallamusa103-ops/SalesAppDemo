@@ -14,6 +14,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -43,10 +44,20 @@ fun MainScreen(
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
     var showLogoutDialog by remember { mutableStateOf(false) }
 
+    LaunchedEffect(isInternalUser) {
+        if (!isInternalUser && selectedTabIndex != 0) {
+            selectedTabIndex = 0
+        }
+    }
+
     MainContent(
         isInternalUser = isInternalUser,
-        selectedTabIndex = selectedTabIndex,
-        onTabSelected = { selectedTabIndex = it },
+        selectedTabIndex = if (isInternalUser) selectedTabIndex else 0,
+        onTabSelected = { newIndex ->
+            if (isInternalUser || newIndex == 0) {
+                selectedTabIndex = newIndex
+            }
+        },
         onNavigateToCustomerDetails = onNavigateToCustomerDetails,
         onRequestLogout = { showLogoutDialog = true },
         modifier = modifier

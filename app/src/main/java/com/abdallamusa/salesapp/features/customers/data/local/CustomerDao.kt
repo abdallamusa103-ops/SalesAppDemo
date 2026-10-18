@@ -18,6 +18,9 @@ interface CustomerDao {
     @Query("SELECT * FROM customers WHERE id = :id LIMIT 1")
     fun getCustomerByIdFlow(id: Int): Flow<CustomerEntity?>
 
+    @Query("SELECT * FROM customers WHERE id = :id LIMIT 1")
+    suspend fun getCustomerById(id: Int): CustomerEntity?
+
     // Used by WorkManager to find records modified offline
     @Query("SELECT * FROM customers WHERE isSynced = 0")
     suspend fun getUnsyncedCustomers(): List<CustomerEntity>
@@ -27,6 +30,9 @@ interface CustomerDao {
 
     @Query("UPDATE customers SET phone = :newPhone, isSynced = 0, lastModified = :timestamp WHERE id = :id")
     suspend fun updatePhoneOffline(id: Int, newPhone: String, timestamp: Long = System.currentTimeMillis())
+
+    @Query("UPDATE customers SET phone = :previousPhone, isSynced = 1 WHERE id = :id")
+    suspend fun revertPhoneUpdate(id: Int, previousPhone: String?)
 
     @Query("UPDATE customers SET isSynced = 1 WHERE id = :id")
     suspend fun markAsSynced(id: Int)

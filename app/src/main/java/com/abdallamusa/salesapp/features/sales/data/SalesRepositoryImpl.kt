@@ -1,5 +1,6 @@
 package com.abdallamusa.salesapp.features.sales.data
 
+import com.abdallamusa.salesapp.core.datastore.SessionPreference
 import com.abdallamusa.salesapp.core.network.OdooApiService
 import com.abdallamusa.salesapp.core.network.model.OdooRpcRequest
 import com.abdallamusa.salesapp.core.utils.ErrorConstants
@@ -17,7 +18,8 @@ import javax.inject.Singleton
 @Singleton
 class SalesRepositoryImpl @Inject constructor(
     private val salesOrderDao: SalesOrderDao,
-    private val odooApiService: OdooApiService
+    private val odooApiService: OdooApiService,
+    private val sessionPreference: SessionPreference
 ) : SalesRepository {
 
     override val salesOrdersFlow: Flow<List<SalesOrder>> =
@@ -48,14 +50,29 @@ class SalesRepositoryImpl @Inject constructor(
             val orderResponse = odooApiService.callKw("sale.order", "search_read", OdooRpcRequest(params = orderParams))
 
             if (!orderResponse.isSuccessful) {
+                val errorBody = orderResponse.errorBody()?.string().orEmpty()
+                if (ErrorConstants.isAccessError(orderResponse.code(), errorMessage = "${orderResponse.message()} $errorBody")) {
+                    salesOrderDao.clearAllOrderLines()
+                    salesOrderDao.clearSalesOrders()
+                    sessionPreference.updateIsInternalUser(false)
+                    return@withContext Result.success(Unit)
+                }
                 return@withContext Result.failure(
                     Exception(ErrorConstants.httpError(orderResponse.code(), orderResponse.message()))
                 )
             }
 
             val orderRpc = orderResponse.body()
-            if (orderRpc?.error != null) {
-                return@withContext Result.failure(Exception(orderRpc.error.readableMessage))
+            val rpcError = orderRpc?.error
+            if (rpcError != null) {
+                val combinedMsg = "${rpcError.message.orEmpty()} ${rpcError.data?.message.orEmpty()}"
+                if (ErrorConstants.isAccessError(errorName = rpcError.data?.name, errorMessage = combinedMsg)) {
+                    salesOrderDao.clearAllOrderLines()
+                    salesOrderDao.clearSalesOrders()
+                    sessionPreference.updateIsInternalUser(false)
+                    return@withContext Result.success(Unit)
+                }
+                return@withContext Result.failure(Exception(rpcError.readableMessage))
             }
 
             val ordersJson = orderRpc?.result?.asJsonArray ?: return@withContext Result.success(Unit)
